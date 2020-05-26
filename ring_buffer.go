@@ -79,6 +79,40 @@ func (r *RingBuffer) Read(p []byte) (n int, err error) {
 	return n, err
 }
 
+// ReadDiscard
+func (r *RingBuffer) ReadDiscard(size int) (n int, err error) {
+	if size == 0 {
+		return 0, nil
+	}
+
+	r.mu.Lock()
+	if r.w == r.r && !r.isFull {
+		r.mu.Unlock()
+		return 0, ErrIsEmpty
+	}
+
+	if r.w > r.r {
+		n = r.w - r.r
+		if n > size {
+			n = size
+		}
+		r.r = (r.r + n) % r.size
+		r.mu.Unlock()
+		return
+	}
+
+	n = r.size - r.r + r.w
+	if n > size {
+		n = size
+	}
+
+	r.r = (r.r + n) % r.size
+
+	r.isFull = false
+	r.mu.Unlock()
+	return n, err
+}
+
 // ReadByte reads and returns the next byte from the input or ErrIsEmpty.
 func (r *RingBuffer) ReadByte() (b byte, err error) {
 	r.mu.Lock()

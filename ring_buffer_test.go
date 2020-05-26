@@ -278,6 +278,84 @@ func TestRingBuffer_Read(t *testing.T) {
 
 }
 
+func TestRingBuffer_ReadDiscard(t *testing.T) {
+	rb := New(64)
+
+	// check empty or full
+	if !rb.IsEmpty() {
+		t.Fatalf("expect IsEmpty is true but got false")
+	}
+	if rb.IsFull() {
+		t.Fatalf("expect IsFull is false but got true")
+	}
+	if rb.Length() != 0 {
+		t.Fatalf("expect len 0 bytes but got %d. r.w=%d, r.r=%d", rb.Length(), rb.w, rb.r)
+	}
+	if rb.Free() != 64 {
+		t.Fatalf("expect free 64 bytes but got %d. r.w=%d, r.r=%d", rb.Free(), rb.w, rb.r)
+	}
+
+	// read empty
+	n, err := rb.ReadDiscard(1024)
+	if err == nil {
+		t.Fatalf("expect an error but got nil")
+	}
+	if err != ErrIsEmpty {
+		t.Fatalf("expect ErrIsEmpty but got nil")
+	}
+	if n != 0 {
+		t.Fatalf("expect read 0 bytes but got %d", n)
+	}
+	if rb.Length() != 0 {
+		t.Fatalf("expect len 0 bytes but got %d. r.w=%d, r.r=%d", rb.Length(), rb.w, rb.r)
+	}
+	if rb.Free() != 64 {
+		t.Fatalf("expect free 64 bytes but got %d. r.w=%d, r.r=%d", rb.Free(), rb.w, rb.r)
+	}
+	if rb.r != 0 {
+		t.Fatalf("expect r.r=0 but got %d. r.w=%d", rb.r, rb.w)
+	}
+
+	// write 16 bytes to read
+	rb.Write([]byte(strings.Repeat("abcd", 4)))
+	n, err = rb.ReadDiscard(16)
+	if err != nil {
+		t.Fatalf("read discard failed: %v", err)
+	}
+	if n != 16 {
+		t.Fatalf("expect read 16 bytes but got %d", n)
+	}
+	if rb.Length() != 0 {
+		t.Fatalf("expect len 0 bytes but got %d. r.w=%d, r.r=%d", rb.Length(), rb.w, rb.r)
+	}
+	if rb.Free() != 64 {
+		t.Fatalf("expect free 64 bytes but got %d. r.w=%d, r.r=%d", rb.Free(), rb.w, rb.r)
+	}
+	if rb.r != 16 {
+		t.Fatalf("expect r.r=16 but got %d. r.w=%d", rb.r, rb.w)
+	}
+
+	// write long slice to  read
+	rb.Write([]byte(strings.Repeat("abcd", 20)))
+	n, err = rb.ReadDiscard(1024)
+	if err != nil {
+		t.Fatalf("read discard failed: %v", err)
+	}
+	if n != 64 {
+		t.Fatalf("expect read 64 bytes but got %d", n)
+	}
+	if rb.Length() != 0 {
+		t.Fatalf("expect len 0 bytes but got %d. r.w=%d, r.r=%d", rb.Length(), rb.w, rb.r)
+	}
+	if rb.Free() != 64 {
+		t.Fatalf("expect free 64 bytes but got %d. r.w=%d, r.r=%d", rb.Free(), rb.w, rb.r)
+	}
+	if rb.r != 16 {
+		t.Fatalf("expect r.r=16 but got %d. r.w=%d", rb.r, rb.w)
+	}
+
+}
+
 func TestRingBuffer_ByteInterface(t *testing.T) {
 	rb := New(2)
 
